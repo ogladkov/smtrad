@@ -115,7 +115,7 @@ class Indicator:
         return self
     # Create exponential moving average
     def ema(self, ema_period):
-        self['EMA' + str(ema_period)] = self['CLOSE'].rolling(ema_period).mean()df
+        self['EMA' + str(ema_period)] = self['CLOSE'].rolling(ema_period).mean()
         self['EMA' + str(ema_period)] = (self['CLOSE'] * 2 / (ema_period + 1)) + self['EMA' + str(ema_period)].shift() * (1 - 2 / (ema_period + 1))
         self = self.dropna()
         return self
@@ -146,5 +146,16 @@ class Indicator:
         self.drop(['ABS', 'U', 'D', 'E', 'AVG_GAIN', 'AVG_LOSS'], axis=1, inplace=True)
         self.dropna(inplace=True)
         return self
-
+    # Create MACD
+    def macd(self, period_1=12, period_2=26, signal=9):
+        self['EMA' + str(period_1)] = self['CLOSE'].rolling(period_1).mean()
+        self['EMA' + str(period_1)] = (self['CLOSE'] * 2 / (period_1 + 1)) + self['EMA' + str(period_1)].shift() * (1 - 2 / (period_1 + 1))
+        self['EMA' + str(period_2)] = self['CLOSE'].rolling(period_2).mean()
+        self['EMA' + str(period_2)] = (self['CLOSE'] * 2 / (period_2 + 1)) + self['EMA' + str(period_2)].shift() * (1 - 2 / (period_2 + 1))
+        self['MACD'] = self['EMA' + str(period_1)] - self['EMA' + str(period_2)]
+        self['MACD_SIGNAL'] = self['MACD'].rolling(signal).mean()
+        self['MACD_SIGNAL'] = (self['MACD'] * 2 / (signal + 1)) + self['MACD_SIGNAL'].shift() * (1 - 2 / (signal + 1))
+        self['MACD_HIST'] = self['MACD'] - self['MACD_SIGNAL']
+        self.dropna(inplace=True)
+        return self
     
