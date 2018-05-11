@@ -12,9 +12,9 @@ import matplotlib.dates as dts
 import matplotlib.ticker as ticker
 import bitmex
 
-################# ОБРАБОТКА ДАННЫХ #################
+################# PROCESS DATA #################
 
-# Создание списка из имен файлов из директории
+# Create list from filenames from the dir
 def read_fnames(fpath):
     os.chdir(fpath)
     fname_list = []
@@ -23,7 +23,7 @@ def read_fnames(fpath):
     print(fname_list)
     return fname_list
 
-# Чтение и адаптация котировок с finam.ru БЕЗ ПАРАМЕТРА ВРЕМЕНИ (ДНЕВКИ)
+# Read and adopt quotes from finam.ru (days)
 def read_finam_d(fpath, file):
     df = pd.read_csv(fpath +  '\\' + file, delimiter=';')
     df = pd.DataFrame(df)
@@ -37,7 +37,7 @@ def read_finam_d(fpath, file):
     df = df.dropna()
     return df
 
-# Чтение и адаптация котировок с finam.ru С ПАРАМЕТРОМ ВРЕМЕНИ (МИНУТКИ)
+# Read and adopt quotes from finam.ru (mins)
 def read_finam_m(fpath, file):
     df = pd.read_csv(fpath +  '\\' + file, delimiter=';')
     df = pd.DataFrame(df)
@@ -51,8 +51,8 @@ def read_finam_m(fpath, file):
     df = df.dropna()
     return df
 
-# Чтение и адаптация котировок с bitmex.com
-def read_bitmex(test, api_key, api_secret, symbol, binSize): # test = True включает Тестнет
+# Read and adopt quotes from bitmex.com
+def read_bitmex(test, api_key, api_secret, symbol, binSize): # test = True switches on TESTNET
     client = bitmex.bitmex(test=test, api_key=api_key, api_secret=api_secret)
     client = bitmex.bitmex()
     df = client.Trade.Trade_getBucketed(symbol=symbol, binSize=binSize, count=500, reverse=True).result()
@@ -66,7 +66,7 @@ def read_bitmex(test, api_key, api_secret, symbol, binSize): # test = True вк�
     df.sort_index(inplace=True, ascending=True)
     return df
 
-# Ресемпл котировок
+# Resample quotes
 def qt_resample(df, timeframe):
     conversion = {'OPEN' : 'first', 'HIGH' : 'max', 'LOW' : 'min', 'CLOSE' : 'last'}
     df = df.resample(timeframe, how=conversion, base=0)
@@ -74,9 +74,9 @@ def qt_resample(df, timeframe):
     return df
 
 
-################# ГРАФИКИ #################
+################# GRAPHS #################
 
-# Свечной график
+# Candle graph
 def candles(df, width=0.65, colorup='g', colordown='r', alpha=0.75):
     ax = plt.axes()
 #    df.reset_index(inplace=True)
@@ -90,20 +90,20 @@ def candles(df, width=0.65, colorup='g', colordown='r', alpha=0.75):
 #    ax.xaxis.set_minor_formatter(dts.DateFormatter('%H:%M:%S'))
     return mpl.candlestick2_ohlc(ax, df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'], width=width, colorup=colorup, colordown=colordown, alpha=alpha)
     
-# График RSI (подается Series RSI с датами в индексе)
+# Graph RSI
 def rsi_graph(rsi):
     ax = plt.axes()
     ax.plot(rsi)
     plt.show() 
 
-################# ИНДИКАТОРЫ И ОСЦИЛЛЯТОРЫ #################
+################# INDICATORS #################
 
-# Создание признака MA (moving average) с параметром роллинга
+# Create moving average with rolling
 def ma(df, ma_period):
     df['MA' + str(ma_period)] = df['CLOSE'].rolling(ma_period).mean()
     return df
 
-# Создание RSI
+# Create RSI
 def rsi(df, rsi_period):
     df['ABS'] = df['CLOSE'] - df['CLOSE'].shift()
     
