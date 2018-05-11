@@ -113,6 +113,12 @@ class Indicator:
         self['MA' + str(ma_period)] = self['CLOSE'].rolling(ma_period).mean()
         self = self.dropna()
         return self
+    # Create exponential moving average
+    def ema(self, ema_period):
+        self['EMA' + str(ema_period)] = self['CLOSE'].rolling(ema_period).mean()df
+        self['EMA' + str(ema_period)] = (self['CLOSE'] * 2 / (ema_period + 1)) + self['EMA' + str(ema_period)].shift() * (1 - 2 / (ema_period + 1))
+        self = self.dropna()
+        return self
     # Create RSI
     def rsi(self, rsi_period):
         self['ABS'] = self['CLOSE'] - self['CLOSE'].shift()
