@@ -96,45 +96,8 @@ def rsi_graph(rsi):
     ax.plot(rsi)
     plt.show() 
 
-################# INDICATORS #################
-
-# Create moving average with rolling
-def ma(df, ma_period):
-    df['MA' + str(ma_period)] = df['CLOSE'].rolling(ma_period).mean()
-    return df
-
-# Create RSI
-def rsi(df, rsi_period):
-    df['ABS'] = df['CLOSE'] - df['CLOSE'].shift()
     
-    def up(x):
-        if x > 0:
-            return x
-        else:
-            return 0
-    df['U'] = df['ABS'].apply(up)
-
-    def down(x):
-        if x < 0:
-            return x * -1
-        else:
-            return 0
-    df['D'] = df['ABS'].apply(down)
-
-    def equal(x):
-        if x == 0:
-            return 1
-        else:
-            return 0
-        
-    df['E'] = df['ABS'].apply(equal)
-
-    df['AVG_GAIN'] = df['U'].rolling(rsi_period).mean()
-    df['AVG_LOSS'] = df['D'].rolling(rsi_period).mean()
-    df['RSI' + str(rsi_period)] = 100 - 100 / (1 + df['AVG_GAIN'] / df['AVG_LOSS'])
-    df.drop(['ABS', 'U', 'D', 'E', 'AVG_GAIN', 'AVG_LOSS'], axis=1, inplace=True)
-    df.dropna(inplace=True)
-    return df
+################# INDICATORS #################
 
 class Indicator:
     def __init__(self, df):
@@ -144,6 +107,38 @@ class Indicator:
         self['UPPER_BAND'] = self['MID_BAND'] + 2 * self['CLOSE'].rolling(20).std()
         self['LOWER_BAND'] = self['MID_BAND'] - 2 * self['CLOSE'].rolling(20).std()
         self = self.dropna()
+        return self
+    # Create moving average with rolling
+    def ma(self, ma_period):
+        self['MA' + str(ma_period)] = self['CLOSE'].rolling(ma_period).mean()
+        self = self.dropna()
+        return self
+    # Create RSI
+    def rsi(self, rsi_period):
+        self['ABS'] = self['CLOSE'] - self['CLOSE'].shift()
+        def up(x):
+            if x > 0:
+                return x
+            else:
+                return 0
+        self['U'] = self['ABS'].apply(up)
+        def down(x):
+            if x < 0:
+                return x * -1
+            else:
+                return 0
+        self['D'] = self['ABS'].apply(down)
+        def equal(x):
+            if x == 0:
+                return 1
+            else:
+                return 0
+        self['E'] = self['ABS'].apply(equal)
+        self['AVG_GAIN'] = self['U'].rolling(rsi_period).mean()
+        self['AVG_LOSS'] = self['D'].rolling(rsi_period).mean()
+        self['RSI' + str(rsi_period)] = 100 - 100 / (1 + self['AVG_GAIN'] / self['AVG_LOSS'])
+        self.drop(['ABS', 'U', 'D', 'E', 'AVG_GAIN', 'AVG_LOSS'], axis=1, inplace=True)
+        self.dropna(inplace=True)
         return self
 
     
