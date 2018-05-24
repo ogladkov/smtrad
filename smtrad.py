@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as dts
 import matplotlib.ticker as ticker
 import bitmex
+import plotly as py
+from plotly import graph_objs as go
 
 ################# PROCESS DATA #################
 
@@ -76,25 +78,47 @@ def qt_resample(df, timeframe):
 
 ################# GRAPHS #################
 
-# Candle graph
-def candles(df, width=0.65, colorup='g', colordown='r', alpha=0.75):
-    ax = plt.axes()
-#    df.reset_index(inplace=True)
-#    df.columns = ['time', 'open', 'high', 'low', 'close']
-#    df['time'] = dts.date2num(pd.to_datetime(df.index).tolist())
-    
-#    df.index = dts.num2date(df.index)
-#    ax.xaxis.set_major_locator(ticker.MaxNLocator(6))
-#    ax.xaxis.set_minor_locator(dts.DayLocator())
-#    ax.xaxis_date()
-#    ax.xaxis.set_minor_formatter(dts.DateFormatter('%H:%M:%S'))
-    return mpl.candlestick2_ohlc(ax, df['OPEN'], df['HIGH'], df['LOW'], df['CLOSE'], width=width, colorup=colorup, colordown=colordown, alpha=alpha)
-    
-# Graph RSI
-def rsi_graph(rsi):
-    ax = plt.axes()
-    ax.plot(rsi)
-    plt.show() 
+class Graph:
+    def __init__(self, df):
+        self.df = df
+    def candlesticks(self, name = None, showlegend = False, width=800, height=600, title = None):
+        candles = go.Candlestick(x = self.index,
+                                 open = self.OPEN,
+                                 high = self.HIGH,
+                                 low = self.LOW,
+                                 close = self.CLOSE,
+                                increasing = dict(
+                                    line = dict(
+                                        color = 'rgba(0,120,110,1)',
+                                        width = 1
+                                        )
+                                    ),
+                                 decreasing = dict(
+                                    line = dict(
+                                        color = 'rgba(50,50,50,1)',
+                                        width = 1
+                                        )
+                                    ),
+                                 name = name,
+                                )
+        
+        layout = go.Layout(xaxis = dict(
+                            rangeslider = dict(
+                                visible = False)
+                                    ),
+                           autosize = False,
+                           width = width,
+                           height = height,
+                           title = title,
+                           showlegend = showlegend
+                          )
+        
+        data = [candles]
+        
+        fig = go.Figure(data = data, layout = layout)
+        py.offline.iplot(fig)
+        
+        
 
     
 ################# INDICATORS #################
