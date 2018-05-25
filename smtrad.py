@@ -13,6 +13,7 @@ import matplotlib.ticker as ticker
 import bitmex
 import plotly as py
 from plotly import graph_objs as go
+from plotly import tools
 
 ################# PROCESS DATA #################
 
@@ -81,12 +82,13 @@ def qt_resample(df, timeframe):
 class Graph:
     def __init__(self, df):
         self.df = df
-    def candlesticks(self, name = None, showlegend = False, width=800, height=600, title = None):
-        candles = go.Candlestick(x = self.index,
-                                 open = self.OPEN,
-                                 high = self.HIGH,
-                                 low = self.LOW,
-                                 close = self.CLOSE,
+        
+    def candlesticks(fig, df, name = None, showlegend = False, title = None, spanRowPos = 1, spanColPos = 1):
+        candles = go.Candlestick(x = df.index,
+                                 open = df.OPEN,
+                                 high = df.HIGH,
+                                 low = df.LOW,
+                                 close = df.CLOSE,
                                 increasing = dict(
                                     line = dict(
                                         color = 'rgba(0,120,110,1)',
@@ -107,17 +109,42 @@ class Graph:
                                 visible = False)
                                     ),
                            autosize = False,
-                           width = width,
-                           height = height,
                            title = title,
                            showlegend = showlegend
                           )
         
         data = [candles]
-        
-        fig = go.Figure(data = data, layout = layout)
+        fig = fig
+        fig.append_trace(candles, spanRowPos, spanColPos)
         py.offline.iplot(fig)
+        return fig
         
+    def line(fig, df, col, title = None, spanRowPos = 1, spanColPos = 1):
+        line = go.Scatter(x = df.index,
+                          y = df[str(col)]
+                         )
+        fig = fig
+        fig.append_trace(line, spanRowPos, spanColPos)
+        py.offline.iplot(fig)
+        return fig
+    
+    def subplots(rows=1, cols=1, rowspan=1, colspan=1, subplot_titles = None, width=800, height=600):
+        def make_specs(rows=rows, cols=cols):
+            specs = []
+            for r in range(1, rows+1):
+                specs[r-1] = []
+            return specs
+        
+        fig = tools.make_subplots(rows = rows, cols = cols, shared_xaxes = True, 
+#                                  specs=[ [{'rowspan':rowspan, 'colspan':colspan}], 
+#                                  [{}], 
+#                                  [{}], 
+#                                  [{}] ],
+                                  specs = [ [{'rowspan':rows, 'colspan':cols}] ],
+#                                  subplot_titles = subplot_titles
+                                 )
+        return fig
+
         
 
     
