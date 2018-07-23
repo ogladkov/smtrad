@@ -144,6 +144,17 @@ class Graph:
 #                                  subplot_titles = subplot_titles
                                  )
         return fig
+    
+    # Cumulative equity graph
+    def equity_cumulative(self): # Recieves results list in format ([datetime, result_value])
+        x, y = [], []
+        for d, v in self:
+            x.append(d)
+            y.append(v)
+        plt.figure(figsize=[16,12])
+        plt.grid(True)
+        plt.plot(x, np.cumsum(y))
+        plt.show()
 
         
 
@@ -159,18 +170,22 @@ class Indicator:
         self['LOWER_BAND'] = self['MID_BAND'] - 2 * self['CLOSE'].rolling(20).std()
         self = self.dropna()
         return self
+    
     # Create moving average with rolling
     def ma(self, ma_period):
         self['MA' + str(ma_period)] = self['CLOSE'].rolling(ma_period).mean()
         self = self.dropna()
         return self
+    
     # Create exponential moving average
     def ema(self, ema_period):
-        a = 2 / ema_period + 1
-        self['EMA' + str(ema_period)] = self['CLOSE']
-        self['EMA' + str(ema_period)] = a * self['CLOSE'] + (1 - a) * self['EMA' + str(ema_period)].shift()
-        self = self.dropna()
+        weights = np.exp(np.linspace(-1., 0., ema_period))
+        weights /= weights.sum()
+        a =  np.convolve(self['CLOSE'], weights, mode='full')[:len(self['CLOSE'])]
+        a[:ema_period] = a[ema_period]
+        self['EMA' + str(ema_period)] = a
         return self
+    
     # Create RSI
     def rsi(self, rsi_period):
         self['ABS'] = self['CLOSE'] - self['CLOSE'].shift()
@@ -198,6 +213,7 @@ class Indicator:
         self.drop(['ABS', 'U', 'D', 'E', 'AVG_GAIN', 'AVG_LOSS'], axis=1, inplace=True)
         self.dropna(inplace=True)
         return self
+    
     # Create MACD
     def macd(self, period_1=12, period_2=26, signal=9):
         self['EMA' + str(period_1)] = self['CLOSE'].rolling(period_1).mean()
