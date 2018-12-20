@@ -6,7 +6,7 @@ import os
 import warnings
 import matplotlib.cbook
 warnings.filterwarnings("ignore",category=matplotlib.cbook.mplDeprecation)
-import matplotlib.finance as mpl
+import mpl_finance as mpl
 import matplotlib.pyplot as plt
 import matplotlib.dates as dts
 import matplotlib.ticker as ticker
@@ -16,6 +16,59 @@ from plotly import graph_objs as go
 from plotly import tools
 
 ################# PROCESS DATA #################
+# Reads quotes from Finam.ru as Pandas DataFrame
+def finam_direct(ticker, start, end, timeframe):
+    timeframe_dict = {"1 min":2, "5 min":3, "10 min":4, "15 min":5, "30 min":6, "1 hour":7, "1 day":8, "1 week":9,  "1 month":10}
+    emcodes_dict = {"SBER":3, "GAZP":16842, "LKOH":8, "USD000UTSTOM":182400, "EUR_RUB__TOM":182398, "EURUSD000TOM":182399, "ALRS":81820, "ROSN":17273}
+
+    def transform_dates(start, end):
+        start = dt.datetime.strptime(start, '%d.%m.%Y')
+        end = dt.datetime.strptime(end, '%d.%m.%Y')
+        return start, end
+
+    date_start, date_end = transform_dates(start, end)
+#
+    assemble = 'http://export.finam.ru/{ticker}_{date_from}_{date_to}.txt?market={market}&em={em}&code={ticker}&apply=0&df={df}&mf={mf}&yf={yf}&from={date_from_points}&dt={dt}&mt={mt}&yt={yt}&to={date_to_points}&p={timeframe}&f={ticker}_{date_from}_{date_to}&e=.txt&cn={ticker}&dtf=1&tmf=1&MSOR=1&mstime=on&mstimever=1&sep=3&sep2=1&datf=1&at=1'.format(                           ticker=ticker,
+                              date_from=dt.datetime.strftime(date_start, 
+                                                             format='%d%m%y'),
+                              date_to=dt.datetime.strftime(date_end, 
+                                                           format='%d%m%y'),
+                              df=date_start.day,
+                              mf=date_start.month-1,
+                              yf=date_start.year,
+                              date_from_points=dt.datetime.strftime(date_start, 
+                                                                    format='%d.%m.%Y'),
+                              dt=date_end.day,
+                              mt=date_end.month-1,
+                              yt=date_end.year,
+                              date_to_points=dt.datetime.strftime(date_end, 
+                                                                    format='%d.%m.%Y'),
+                              timeframe=timeframe_dict[timeframe],
+                              market = '1',
+                              em = emcodes_dict[ticker]
+                                              )
+    df = pd.read_csv(assemble, sep=';', encoding='Windows-1251')
+    
+    if timeframe.split(' ')[1] == 'min' or timeframe.split(' ')[1] == 'hour':
+        df['<TIME>'] = df['<TIME>'].replace(0, '000000')
+        df['DATETIME'] = df['<DATE>'].astype('str').str[:8] + df['<TIME>'].astype('str')
+        df['DATETIME'] = pd.to_datetime(df['DATETIME'], format='%Y%m%d%H%M%S')
+        df.set_index('DATETIME', inplace=True)
+        df.drop(['<PER>', '<DATE>', '<TICKER>', '<TIME>', '<VOL>'], axis=1, inplace=True)
+        df.columns = ['OPEN', 'HIGH', 'LOW', 'CLOSE']
+        df.index = pd.to_datetime(df.index, format='%Y-%m-%d %H:%M:%S')
+        df = df.dropna()
+        return df
+    else:
+        df['DATETIME'] = df['<DATE>'].astype('str')
+        df['DATETIME'] = pd.to_datetime(df['DATETIME'], format='%Y%m%d')
+        df.set_index('DATETIME', inplace=True)
+        df.drop(['<PER>', '<DATE>', '<TICKER>', '<TIME>', '<VOL>'], axis=1, inplace=True)
+        df.columns = ['OPEN', 'HIGH', 'LOW', 'CLOSE']
+        df.index = pd.to_datetime(df.index, format='%Y-%m-%d %H:%M:%S')
+        df = df.dropna()
+        return df
+    
 
 # Create list from filenames from the dir
 def read_fnames(fpath):
@@ -44,6 +97,7 @@ def read_finam_d(fpath, file):
 def read_finam_m(fpath, file):
     df = pd.read_csv(fpath +  '\\' + file, delimiter=';')
     df = pd.DataFrame(df)
+    df['<TIME>'] = df['<TIME>'].replace(0, '000000')
     df['DATETIME'] = df['<DATE>'].astype('str').str[:8] + df['<TIME>'].astype('str')
     df['DATETIME'] = pd.to_datetime(df['DATETIME'], format='%Y%m%d%H%M%S')
     df.set_index('DATETIME', inplace=True)
@@ -226,4 +280,16 @@ class Indicator:
         self['MACD_HIST'] = self['MACD'] - self['MACD_SIGNAL']
         self.dropna(inplace=True)
         return self
+    
+    # Create CCI
+    def cci(self, cci_period):
+        self['TP'] = (self['CLOSE'].shift() + self['HIGH'].shift() + self['LOW'].shift()) / 3
+        self['SMATP'] = self['TP'].rolling(cci_period).mean()
+        self['D'] = abs(self['TP'] - self['SMATP'])
+        self['MD'] = self['D'].rolling(cci_period).mean()
+        self['CCI' + str(cci_period)] = (self['TP'] - self['SMATP']) / (0.015 * self['MD'])
+        self.drop(['TP', 'SMATP', 'D', 'MD'], axis = 1, inplace=True)
+        self.dropna(inplace=True)
+        return self
+    
     
