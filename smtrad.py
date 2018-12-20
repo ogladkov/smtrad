@@ -14,6 +14,7 @@ import bitmex
 import plotly as py
 from plotly import graph_objs as go
 from plotly import tools
+from time import sleep
 
 ################# PROCESS DATA #################
 # Reads quotes from Finam.ru as Pandas DataFrame
@@ -58,6 +59,7 @@ def finam_direct(ticker, start, end, timeframe):
         df.columns = ['OPEN', 'HIGH', 'LOW', 'CLOSE']
         df.index = pd.to_datetime(df.index, format='%Y-%m-%d %H:%M:%S')
         df = df.dropna()
+        sleep(1)
         return df
     else:
         df['DATETIME'] = df['<DATE>'].astype('str')
@@ -67,6 +69,7 @@ def finam_direct(ticker, start, end, timeframe):
         df.columns = ['OPEN', 'HIGH', 'LOW', 'CLOSE']
         df.index = pd.to_datetime(df.index, format='%Y-%m-%d %H:%M:%S')
         df = df.dropna()
+        sleep(1)
         return df
     
 
@@ -137,82 +140,93 @@ class Graph:
     def __init__(self, df):
         self.df = df
         
-    def candlesticks(fig, df, name = None, showlegend = False, title = None, spanRowPos = 1, spanColPos = 1):
-        candles = go.Candlestick(x = df.index,
-                                 open = df.OPEN,
-                                 high = df.HIGH,
-                                 low = df.LOW,
-                                 close = df.CLOSE,
-                                increasing = dict(
-                                    line = dict(
-                                        color = 'rgba(0,120,110,1)',
-                                        width = 1
-                                        )
-                                    ),
-                                 decreasing = dict(
-                                    line = dict(
-                                        color = 'rgba(50,50,50,1)',
-                                        width = 1
-                                        )
-                                    ),
-                                 name = name,
-                                )
-        
-        layout = go.Layout(xaxis = dict(
-                            rangeslider = dict(
-                                visible = False)
-                                    ),
-                           autosize = False,
-                           title = title,
-                           showlegend = showlegend
-                          )
-        
-        data = [candles]
-        fig = fig
-        fig.append_trace(candles, spanRowPos, spanColPos)
-        py.offline.iplot(fig)
-        return fig
-        
-    def line(fig, df, col, title = None, spanRowPos = 1, spanColPos = 1):
-        line = go.Scatter(x = df.index,
-                          y = df[str(col)]
+    def newline(*args):
+        traces = []
+        for a in enumerate(args, 1):
+            traces.append(go.Scatter(x=a[1]['sec'].index,
+                               y=a[1]['sec'].CLOSE,
+                               name=a[1]['name'],
+                               yaxis='y'+str(a[0]),
+                               line=dict(color=a[1]['color'])
+                              )
                          )
-        fig = fig
-        fig.append_trace(line, spanRowPos, spanColPos)
-        py.offline.iplot(fig)
-        return fig
-    
-    def subplots(rows=1, cols=1, rowspan=1, colspan=1, subplot_titles = None, width=800, height=600):
-        def make_specs(rows=rows, cols=cols):
-            specs = []
-            for r in range(1, rows+1):
-                specs[r-1] = []
-            return specs
-        
-        fig = tools.make_subplots(rows = rows, cols = cols, shared_xaxes = True, 
-#                                  specs=[ [{'rowspan':rowspan, 'colspan':colspan}], 
-#                                  [{}], 
-#                                  [{}], 
-#                                  [{}] ],
-                                  specs = [ [{'rowspan':rows, 'colspan':cols}] ],
-#                                  subplot_titles = subplot_titles
-                                 )
-        return fig
-    
-    # Cumulative equity graph
-    def equity_cumulative(self): # Recieves results list in format ([datetime, result_value])
-        x, y = [], []
-        for d, v in self:
-            x.append(d)
-            y.append(v)
-        plt.figure(figsize=[16,12])
-        plt.grid(True)
-        plt.plot(x, np.cumsum(y))
-        plt.show()
 
+        layout = {}
+        layout['legend']={'orientation':'h'}
         
+        position = 0
+        
+        for a in enumerate(args, 1):
+            if a[0] == 1:
+                layout['yaxis'+str(a[0])]={'side':a[1]['axis'], 
+                                           'title':a[1]['name'],
+                                           'color':a[1]['color'],}
+            else:
+                if a[1]['axis'] == 'left':
+                    position += 0.04
+                    layout['yaxis'+str(a[0])]={'side':a[1]['axis'], 
+                                               'title':a[1]['name'],
+                                               'overlaying':'y1',
+                                               'color':a[1]['color'],
+                                               'position':position}
+                else:
+                    layout['yaxis'+str(a[0])]={'side':a[1]['axis'], 
+                                               'title':a[1]['name'],
+                                               'color':a[1]['color'],
+                                               'overlaying':'y1'}
 
-    
+        data = traces
+        fig = dict(data=data, layout=layout)
+        py.offline.plot(fig)
+        
+    def candles(*args):
+        traces = []
+        for a in enumerate(args, 1):
+            traces.append(go.Candlestick(x=a[1]['sec'].index,
+                                         open=a[1]['sec'].OPEN,
+                                         high=a[1]['sec'].HIGH,
+                                         low=a[1]['sec'].LOW,
+                                         close=a[1]['sec'].CLOSE,
+                                         name=a[1]['name'],
+                                         yaxis='y'+str(a[0]),
+                                         increasing=dict(line = dict(color=a[1]['color'],
+                                                                     width=1),
+                                                         fillcolor = 'white'),
+                                         decreasing=dict(line=dict(color=a[1]['color'],
+                                                                  width=1))
+                                        )
+                                        
+                         )
+
+        layout = {}
+        layout['legend']={'orientation':'h'}
+        layout['xaxis']={'rangeslider':{'visible':False}}
+        
+        position = 0
+        
+        for a in enumerate(args, 1):
+            if a[0] == 1:
+                layout['yaxis'+str(a[0])]={'side':a[1]['axis'], 
+                                           'title':a[1]['name'],
+                                           'color':a[1]['color'],}
+            else:
+                if a[1]['axis'] == 'left':
+                    position += 0.04
+                    layout['yaxis'+str(a[0])]={'side':a[1]['axis'], 
+                                               'title':a[1]['name'],
+                                               'overlaying':'y1',
+                                               'color':a[1]['color'],
+                                               'position':position}
+                else:
+                    layout['yaxis'+str(a[0])]={'side':a[1]['axis'], 
+                                               'title':a[1]['name'],
+                                               'color':a[1]['color'],
+                                               'overlaying':'y1'}
+
+        data = traces
+        fig = dict(data=data, layout=layout)
+        py.offline.plot(fig)
+        
 ################# INDICATORS #################
 
 class Indicator:
