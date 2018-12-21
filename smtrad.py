@@ -200,7 +200,7 @@ class Graph:
 
         layout = {}
         layout['legend']={'orientation':'h'}
-        layout['xaxis']={'rangeslider':{'visible':False}}
+        layout['xaxis']={'rangeslider':{'visible':False}, 'type':'category'}
         
         position = 0
         
