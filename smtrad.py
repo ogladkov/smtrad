@@ -20,7 +20,7 @@ from time import sleep
 # Reads quotes from Finam.ru as Pandas DataFrame
 def finam_direct(ticker, start, end, timeframe):
     timeframe_dict = {"1 min":2, "5 min":3, "10 min":4, "15 min":5, "30 min":6, "1 hour":7, "1 day":8, "1 week":9,  "1 month":10}
-    emcodes_dict = {"SBER":3, "GAZP":16842, "LKOH":8, "USD000UTSTOM":182400, "EUR_RUB__TOM":182398, "EURUSD000TOM":182399, "ALRS":81820, "ROSN":17273}
+    emcodes_dict = {"SBER":3, "SBRF":17456, "GAZP":16842, "LKOH":8, "USD000UTSTOM":182400, "EUR_RUB__TOM":182398, "EURUSD000TOM":182399, "ALRS":81820, "ROSN":17273, "SPFB.RTS":17455, "SPFB.Si":19899}
 
     def transform_dates(start, end):
         start = dt.datetime.strptime(start, '%d.%m.%Y')
@@ -232,10 +232,10 @@ class Graph:
 class Indicator:
     def __init__(self, df):
         self.df = df
-    def bb(self):
-        self['MID_BAND'] = self['CLOSE'].rolling(20).mean()
-        self['UPPER_BAND'] = self['MID_BAND'] + 2 * self['CLOSE'].rolling(20).std()
-        self['LOWER_BAND'] = self['MID_BAND'] - 2 * self['CLOSE'].rolling(20).std()
+    def bb(self, period):
+        self['MID_BAND'] = self['CLOSE'].rolling(period).mean()
+        self['UPPER_BAND'] = self['MID_BAND'] + 2 * self['CLOSE'].rolling(period).std()
+        self['LOWER_BAND'] = self['MID_BAND'] - 2 * self['CLOSE'].rolling(period).std()
         self = self.dropna()
         return self
     
@@ -307,3 +307,66 @@ class Indicator:
         return self
     
     
+################# AGGREGATORS #################
+class Aggregator:
+    def __init__(self, df):
+        self.df = df
+    def greb_results(dfs, suffixes=None, period='1D', total=False):
+        columns_names = ['Дата', 'Результат', 'Всего сделок', 
+                       'Количество положительно закрытых позиций',
+                       'Количество отрицательно закрытых позиций',
+                       'Доходность в % годовых',
+                       'Процент прибыльных итогов',
+                       'Процент убыточных итогов']
+        first_step = True # influences the merging
+        for a in dfs:
+            a = pd.DataFrame(a, columns=['datetime', 'rate', 'result']).set_index('datetime')
+            a['deals_count'] = 1
+            first_price = a.iloc[0]['rate']
+            longs = True if first_price < 0 else False
+            delta = a.index[-1] - a.index[-2]
+            delta = 1 if delta.days == 0 else delta.days
+            def pos_deals(x):
+                if x > 0:
+                    return 1
+            def neg_deals(x):
+                if x < 0:
+                    return 1
+            a['pos_count_deals'] = a['result'].apply(pos_deals)
+            a['neg_count_deals'] = a['result'].apply(neg_deals)
+            a = a.resample(period).sum()
+            if longs:
+                a['yield'] = (a['result'] / first_price / delta * 365 * -1).round(2)
+            else:
+                a['yield'] = (a['result'] / first_price / delta * 365).round(2)
+            a.drop('rate', axis=1, inplace=True)
+            a = a[a['deals_count'] != 0]
+            a[['pos_count_deals', 'neg_count_deals']] = a[['pos_count_deals', 'neg_count_deals']].astype('int')
+            a['pct_pos'] = (a['pos_count_deals'] / (a['pos_count_deals'] + a['neg_count_deals']) * 100).round(2)
+            a['pct_pos'] = a['pct_pos'].astype('str') + '%'
+            a['pct_neg'] = (a['neg_count_deals'] / (a['pos_count_deals'] + a['neg_count_deals']) * 100).round(2)
+            a['pct_neg'] = a['pct_neg'].astype('str') + '%'
+            a['result'] = a['result'].round(4)
+            a.reset_index(inplace=True)
+            a.columns = columns_names
+            if not first_step:
+                a = self.merge(a, on='Дата', suffixes=suffixes, how='outer')
+            else:
+                self = a
+            first_step = False
+        self = a
+        
+        result_colunms = [x for x in self.columns if 'Результат' in x]
+        total_deals_colunms = [x for x in self.columns if 'Всего сделок' in x]
+        self['Результат по всем каналам'] = self[result_colunms].sum(axis=1)
+        self['Сделок по всем каналам'] = self[total_deals_colunms].sum(axis=1)
+        
+        if total:
+            self = self.pivot_table(index='Дата',
+                   margins=True,
+                   margins_name='ВСЕГО',  # defaults to 'All'
+                   aggfunc=sum)
+            order_colunms = [x for x in self.columns if list(self.columns).index(x) % 2 == 0][:-1] +\
+            [x for x in self.columns if list(self.columns).index(x) % 2 == 1] + [self.columns[-2]]
+            self = self[order_colunms]
+        return self
