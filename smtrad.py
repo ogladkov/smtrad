@@ -18,6 +18,16 @@ from time import sleep
 
 ################# PROCESS DATA #################
 # Reads quotes from Finam.ru as Pandas DataFrame
+
+class QuotesFinam:
+    def __init__(self, ticker, start, end, timeframe):
+        self.df = finam_direct(ticker, start, end, timeframe)
+        self.ticker = ticker
+    def ticker(self):
+        return self.ticker
+    def len(self):
+        return self.df.shape[0]
+
 def finam_direct(ticker, start, end, timeframe):
     timeframe_dict = {"1 min":2, "5 min":3, "10 min":4, "15 min":5, "30 min":6, "1 hour":7, "1 day":8, "1 week":9,  "1 month":10}
     emcodes_dict = {"SBER":3, "SBRF":17456, "GAZP":16842, "LKOH":8, "USD000UTSTOM":182400, "EUR_RUB__TOM":182398, "EURUSD000TOM":182399, "ALRS":81820, "ROSN":17273, "SPFB.RTS":17455, "SPFB.Si":19899}
@@ -71,6 +81,29 @@ def finam_direct(ticker, start, end, timeframe):
         df = df.dropna()
         sleep(1)
         return df
+
+# Parse investing.com historical data by link
+def parse_investing_hist(url, start_date, end_date):
+    try:
+        driver = webdriver.Firefox()
+        driver.get(url)
+        driver.find_element_by_css_selector('#flatDatePickerCanvasHol').click()
+        driver.find_element_by_css_selector('#startDate').clear()
+        driver.find_element_by_css_selector('#startDate').send_keys(start_date)
+        driver.find_element_by_css_selector('#endDate').clear()
+        driver.find_element_by_css_selector('#endDate').send_keys(end_date)
+        driver.find_element_by_css_selector('#applyBtn').click()
+        sleep(2)
+        df = pd.DataFrame(pd.read_html(driver.page_source)[0])
+        driver.close()
+        df = df[['Date', 'Price']]
+        df['Date'] = pd.to_datetime(df['Date'], format='%b %d, %Y')
+        df['Price'] = df['Price'].replace(',', '')
+        df['Price'] = df['Price'].astype('float32')
+    except:
+        driver.close()
+        parse_investing_hist(url, start_date, end_date)
+    return df
     
 
 # Create list from filenames from the dir
@@ -247,11 +280,7 @@ class Indicator:
     
     # Create exponential moving average
     def ema(self, ema_period):
-        weights = np.exp(np.linspace(-1., 0., ema_period))
-        weights /= weights.sum()
-        a =  np.convolve(self['CLOSE'], weights, mode='full')[:len(self['CLOSE'])]
-        a[:ema_period] = a[ema_period]
-        self['EMA' + str(ema_period)] = a
+        self['EMA' + str(ema_period)] = self['CLOSE'].ewm(com=0.5).mean()
         return self
     
     # Create RSI
@@ -284,15 +313,9 @@ class Indicator:
     
     # Create MACD
     def macd(self, period_1=12, period_2=26, signal=9):
-        self['EMA' + str(period_1)] = self['CLOSE'].rolling(period_1).mean()
-        self['EMA' + str(period_1)] = (self['CLOSE'] * 2 / (period_1 + 1)) + self['EMA' + str(period_1)].shift() * (1 - 2 / (period_1 + 1))
-        self['EMA' + str(period_2)] = self['CLOSE'].rolling(period_2).mean()
-        self['EMA' + str(period_2)] = (self['CLOSE'] * 2 / (period_2 + 1)) + self['EMA' + str(period_2)].shift() * (1 - 2 / (period_2 + 1))
-        self['MACD'] = self['EMA' + str(period_1)] - self['EMA' + str(period_2)]
-        self['MACD_SIGNAL'] = self['MACD'].rolling(signal).mean()
-        self['MACD_SIGNAL'] = (self['MACD'] * 2 / (signal + 1)) + self['MACD_SIGNAL'].shift() * (1 - 2 / (signal + 1))
-        self['MACD_HIST'] = self['MACD'] - self['MACD_SIGNAL']
-        self.dropna(inplace=True)
+        self['EMA' + str(period_1)] = pd.ewma(self['CLOSE'], span=period_1)
+        self['EMA' + str(period_2)] = pd.ewma(self['CLOSE'], span=period_2)
+        self['EMA' + str(period_1)] = self['EMA' + str(period_2)] - self['EMA' + str(period_1)]
         return self
     
     # Create CCI
