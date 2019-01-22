@@ -4,8 +4,8 @@ from datetime import timedelta
 import datetime as dt
 import os
 import warnings
-import matplotlib.cbook
 warnings.filterwarnings("ignore",category=matplotlib.cbook.mplDeprecation)
+import matplotlib.cbook
 import mpl_finance as mpl
 import matplotlib.pyplot as plt
 import matplotlib.dates as dts
@@ -100,9 +100,42 @@ def parse_investing_hist(url, start_date, end_date):
         df['Date'] = pd.to_datetime(df['Date'], format='%b %d, %Y')
         df['Price'] = df['Price'].replace(',', '')
         df['Price'] = df['Price'].astype('float32')
+    except NameError:
+        driver.close()
+        parse_investing_hist(url, start_date, end_date)
+    return df
+
+# Parse investing.com macroeconomic data by link
+def parse_investing_macro(url, start_date, end_date):
+    try:
+        driver = webdriver.Firefox()
+        driver.get(url)
+        css_element = '#showMoreHistory' + url.split('-')[-1]
+        html = driver.page_source
+        df = pd.read_html(html)[0]
+        df['Release Date'] = pd.to_datetime(df['Release Date'].str[:12], format='%b %d, %Y')
+        while df.iloc[-1]['Release Date'] > dt.datetime.strptime(start_date, '%d.%m.%Y'):
+            driver.find_element_by_css_selector(css_element).click()
+            time.sleep(1)
+            html = driver.page_source
+            df = pd.read_html(html)[0]
+            df['Release Date'] = pd.to_datetime(df['Release Date'].str[:12], format='%b %d, %Y')
+        driver.close()
     except:
         driver.close()
         parse_investing_hist(url, start_date, end_date)
+        time.sleep(3)
+    df = df[['Release Date', 'Actual']]
+    df.columns = ['Date', 'Actual']
+    df.dropna(inplace=True)
+    def process_actual(df):
+        try:
+            df.Actual = df.Actual.astype('float')
+        except ValueError:
+            df.Actual = df.Actual.str[:-1]
+            process_actual(df)
+        return df
+    df = process_actual(df)
     return df
     
 
