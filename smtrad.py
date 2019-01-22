@@ -119,7 +119,7 @@ def parse_investing_macro(url, start_date, end_date):
         html = driver.page_source
         df = pd.read_html(html)[0]
         df['Release Date'] = pd.to_datetime(df['Release Date'].str[:12], format='%b %d, %Y')
-        while df.iloc[-1]['Release Date'] > dt.datetime.strptime(start_date, '%d.%m.%Y'):
+        while df.iloc[-1]['Release Date'] > dt.datetime.strptime(start_date, '%d.%m.%Y') - dt.timedelta(days=180):
             driver.find_element_by_css_selector(css_element).click()
             sleep(1)
             html = driver.page_source
@@ -132,7 +132,7 @@ def parse_investing_macro(url, start_date, end_date):
         sleep(3)
     df = df[['Release Date', 'Actual']]
     df.columns = ['Date', 'Actual']
-    df.dropna(inplace=True)
+#    df.dropna(inplace=True)
     def process_actual(df):
         try:
             df.Actual = df.Actual.astype('float')
@@ -141,7 +141,11 @@ def parse_investing_macro(url, start_date, end_date):
             process_actual(df)
         return df
     df = process_actual(df)
-    df = df[(df['Date'] >= start_date) & (df['Date'] <= end_date)]
+    rng = pd.DataFrame({'Date':pd.date_range(start=df.iloc[-1]['Date'], end=end_date)})
+    df = df.merge(rng, on='Date', how='outer')
+    df = df.sort_values('Date')
+    df = df.fillna(method='ffill')
+    df = df[(df['Date'] >= dt.datetime.strptime(start_date, '%d.%m.%Y')) & (df['Date'] <= dt.datetime.strptime(end_date, '%d.%m.%Y'))]
     return df
     
 
