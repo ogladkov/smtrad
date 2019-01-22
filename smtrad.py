@@ -3,8 +3,8 @@ import numpy as np
 from datetime import timedelta
 import datetime as dt
 import os
-import warnings
-warnings.filterwarnings("ignore",category=matplotlib.cbook.mplDeprecation)
+#import warnings
+#warnings.filterwarnings("ignore",category=matplotlib.cbook.mplDeprecation)
 import matplotlib.cbook
 import mpl_finance as mpl
 import matplotlib.pyplot as plt
@@ -15,6 +15,7 @@ import plotly as py
 from plotly import graph_objs as go
 from plotly import tools
 from time import sleep
+from selenium import webdriver
 
 ################# PROCESS DATA #################
 # Reads quotes from Finam.ru as Pandas DataFrame
@@ -84,6 +85,10 @@ def finam_direct(ticker, start, end, timeframe):
 
 # Parse investing.com historical data by link
 def parse_investing_hist(url, start_date, end_date):
+    d, m, Y = start_date.split('.')
+    start_date = '{month}/{day}/{year}'.format(day=d, month=m, year=Y)
+    d, m, Y = end_date.split('.')
+    end_date = '{month}/{day}/{year}'.format(day=d, month=m, year=Y)
     try:
         driver = webdriver.Firefox()
         driver.get(url)
@@ -116,7 +121,7 @@ def parse_investing_macro(url, start_date, end_date):
         df['Release Date'] = pd.to_datetime(df['Release Date'].str[:12], format='%b %d, %Y')
         while df.iloc[-1]['Release Date'] > dt.datetime.strptime(start_date, '%d.%m.%Y'):
             driver.find_element_by_css_selector(css_element).click()
-            time.sleep(1)
+            sleep(1)
             html = driver.page_source
             df = pd.read_html(html)[0]
             df['Release Date'] = pd.to_datetime(df['Release Date'].str[:12], format='%b %d, %Y')
@@ -124,7 +129,7 @@ def parse_investing_macro(url, start_date, end_date):
     except:
         driver.close()
         parse_investing_hist(url, start_date, end_date)
-        time.sleep(3)
+        sleep(3)
     df = df[['Release Date', 'Actual']]
     df.columns = ['Date', 'Actual']
     df.dropna(inplace=True)
@@ -136,6 +141,7 @@ def parse_investing_macro(url, start_date, end_date):
             process_actual(df)
         return df
     df = process_actual(df)
+    df = df[(df['Date'] >= start_date) & (df['Date'] <= end_date)]
     return df
     
 
@@ -426,3 +432,5 @@ class Aggregator:
             [x for x in self.columns if list(self.columns).index(x) % 2 == 1] + [self.columns[-2]]
             self = self[order_colunms]
         return self
+    
+    
