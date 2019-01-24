@@ -84,7 +84,20 @@ def finam_direct(ticker, start, end, timeframe):
         return df
 
 # Parse investing.com historical data by link
-def parse_investing_hist(url, start_date, end_date):
+def parse_investing_hist(url, start_date, end_date, ohlc=False, prefix=None):
+    '''
+        Description: Parse historical data from investing.com
+        
+        Parameters:
+            url (string) - Link to investing.com. Example: 'https://www.investing.com/currencies/aud-usd-historical-data'
+            start_date (str) - Start of period in format '%d.%m.%Y'
+            end_date (str) - Start of period in format '%d.%m.%Y'
+            ohlc (boolean) - Only Close Price if False (default) or returns Open-High-Low-Close if True.
+            prefix (string) - Prefix for columns. By default there is no prefix (None)
+        
+        Return:
+            Pandas DataFrame
+    '''
     d, m, Y = start_date.split('.')
     start_date = '{month}/{day}/{year}'.format(day=d, month=m, year=Y)
     d, m, Y = end_date.split('.')
@@ -101,14 +114,28 @@ def parse_investing_hist(url, start_date, end_date):
         sleep(2)
         df = pd.DataFrame(pd.read_html(driver.page_source)[0])
         driver.close()
-        df = df[['Date', 'Price']]
+        if ohlc:
+            df = df[['Date', 'Price', 'Open', 'High', 'Low']]
+            if prefix:
+                df.columns = ['Date', str(prefix)+'_'+'CLOSE', str(prefix)+'_'+'OPEN', str(prefix)+'_'+'HIGH', str(prefix)+'_'+'LOW']
+                df = df[['Date', str(prefix)+'_'+'OPEN', str(prefix)+'_'+'HIGH', str(prefix)+'_'+'LOW', str(prefix)+'_'+'CLOSE']]
+            else:
+                df.columns = ['Date', 'CLOSE', 'OPEN', 'HIGH', 'LOW']
+                df = df[['Date', 'OPEN', 'HIGH', 'LOW', 'CLOSE']]
+        else:
+            if prefix:
+                df = df[['Date', 'Price']]
+                df.columns = ['Date', str(prefix)+'_'+'Price']
+            else:
+                df = df[['Date', 'Price']]
         df['Date'] = pd.to_datetime(df['Date'], format='%b %d, %Y')
-        df['Price'] = df['Price'].replace(',', '')
-        df['Price'] = df['Price'].astype('float32')
+        df.iloc[:, 1:] = df.iloc[:, 1:].replace(',', '')
+        df.iloc[:, 1:] = df.iloc[:, 1:].astype('float32')
     except NameError:
         driver.close()
         parse_investing_hist(url, start_date, end_date)
     return df
+
 
 # Parse investing.com macroeconomic data by link
 def parse_investing_macro(url, start_date, end_date):
