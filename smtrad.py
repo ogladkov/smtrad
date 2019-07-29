@@ -3,9 +3,9 @@ import numpy as np
 from datetime import timedelta
 import datetime as dt
 import os
-#import warnings
-#warnings.filterwarnings("ignore",category=matplotlib.cbook.mplDeprecation)
+import warnings
 import matplotlib.cbook
+warnings.filterwarnings("ignore",category=matplotlib.cbook.mplDeprecation)
 import mpl_finance as mpl
 import matplotlib.pyplot as plt
 import matplotlib.dates as dts
@@ -15,7 +15,9 @@ import plotly as py
 from plotly import graph_objs as go
 from plotly import tools
 from time import sleep
-from selenium import webdriver
+
+
+emcodes_dict = {"SBER":3, "SBERP":23, "SBRF":17456, "GAZP":16842, "LKOH":8, "USD000UTSTOM":182400, "EUR_RUB__TOM":182398, "EURUSD000TOM":182399, "ALRS":81820, "ROSN":17273, "SPFB.RTS":17455, "SPFB.Si":19899, "MVID":19737, "NVTK":17370, "MOEX":152798, "HYDR":20266, "IRAO":20516, "MGNT":17086, "MTSS":15523, "GMKN":795, "YNDX":388383, "VTBR":19043, "SNGSP":13, "PLZL":17123, "CHMF":16136, "SIBN":2, "BANEP":81758, "AFLT":29, "NLMK":17046, "TATN":825, "SNGS":4, "RUAL":414279, "ENRU":16440, "RSTI":20971, "AFKS":19715, "TRMK":18441, "FXRU":182346, 'RGBI':82308, 'RASP':17713, 'MSNG':6, "MRKP":20107, "FEES":20509, "UPRO":18584, "IMOEX":420450, "MTSS":15523, "MRKU":20402, "MRKV":20286, "SI":18952, "GC":18953, "MICEX":13851, "POLY":175924, "AKRN":17564, "BSPB":20066, "DIXY":18564, "KMAZ":15544, "LSRG":19736, "MAGN":16782, "MFON":152516, "MSTT":74549, "NMTP":19629, "PIKK":18654, "RTKM":7, "RTKMP":15, "RUALR":74718, "SVAV":16080, "URKA":19623, "PHOR":81114, "GCHE":20125, "UPRO":18584}
 
 ################# PROCESS DATA #################
 # Reads quotes from Finam.ru as Pandas DataFrame
@@ -31,7 +33,6 @@ class QuotesFinam:
 
 def finam_direct(ticker, start, end, timeframe):
     timeframe_dict = {"1 min":2, "5 min":3, "10 min":4, "15 min":5, "30 min":6, "1 hour":7, "1 day":8, "1 week":9,  "1 month":10}
-    emcodes_dict = {"SBER":3, "SBRF":17456, "GAZP":16842, "LKOH":8, "USD000UTSTOM":182400, "EUR_RUB__TOM":182398, "EURUSD000TOM":182399, "ALRS":81820, "ROSN":17273, "SPFB.RTS":17455, "SPFB.Si":19899}
 
     def transform_dates(start, end):
         start = dt.datetime.strptime(start, '%d.%m.%Y')
@@ -84,24 +85,7 @@ def finam_direct(ticker, start, end, timeframe):
         return df
 
 # Parse investing.com historical data by link
-def parse_investing_hist(url, start_date, end_date, ohlc=False, prefix=None):
-    '''
-        Description: Parse historical data from investing.com
-        
-        Parameters:
-            url (string) - Link to investing.com. Example: 'https://www.investing.com/currencies/aud-usd-historical-data'
-            start_date (str) - Start of period in format '%d.%m.%Y'
-            end_date (str) - Start of period in format '%d.%m.%Y'
-            ohlc (boolean) - Only Close Price if False (default) or returns Open-High-Low-Close if True.
-            prefix (string) - Prefix for columns. By default there is no prefix (None)
-        
-        Return:
-            Pandas DataFrame
-    '''
-    d, m, Y = start_date.split('.')
-    start_date = '{month}/{day}/{year}'.format(day=d, month=m, year=Y)
-    d, m, Y = end_date.split('.')
-    end_date = '{month}/{day}/{year}'.format(day=d, month=m, year=Y)
+def parse_investing_hist(url, start_date, end_date):
     try:
         driver = webdriver.Firefox()
         driver.get(url)
@@ -114,65 +98,13 @@ def parse_investing_hist(url, start_date, end_date, ohlc=False, prefix=None):
         sleep(2)
         df = pd.DataFrame(pd.read_html(driver.page_source)[0])
         driver.close()
-        if ohlc:
-            df = df[['Date', 'Price', 'Open', 'High', 'Low']]
-            if prefix:
-                df.columns = ['Date', str(prefix)+'_'+'CLOSE', str(prefix)+'_'+'OPEN', str(prefix)+'_'+'HIGH', str(prefix)+'_'+'LOW']
-                df = df[['Date', str(prefix)+'_'+'OPEN', str(prefix)+'_'+'HIGH', str(prefix)+'_'+'LOW', str(prefix)+'_'+'CLOSE']]
-            else:
-                df.columns = ['Date', 'CLOSE', 'OPEN', 'HIGH', 'LOW']
-                df = df[['Date', 'OPEN', 'HIGH', 'LOW', 'CLOSE']]
-        else:
-            if prefix:
-                df = df[['Date', 'Price']]
-                df.columns = ['Date', str(prefix)+'_'+'Price']
-            else:
-                df = df[['Date', 'Price']]
+        df = df[['Date', 'Price']]
         df['Date'] = pd.to_datetime(df['Date'], format='%b %d, %Y')
-        df.iloc[:, 1:] = df.iloc[:, 1:].replace(',', '')
-        df.iloc[:, 1:] = df.iloc[:, 1:].astype('float32')
-    except NameError:
-        driver.close()
-        parse_investing_hist(url, start_date, end_date)
-    return df
-
-
-# Parse investing.com macroeconomic data by link
-def parse_investing_macro(url, start_date, end_date):
-    try:
-        driver = webdriver.Firefox()
-        driver.get(url)
-        css_element = '#showMoreHistory' + url.split('-')[-1]
-        html = driver.page_source
-        df = pd.read_html(html)[0]
-        df['Release Date'] = pd.to_datetime(df['Release Date'].str[:12], format='%b %d, %Y')
-        while df.iloc[-1]['Release Date'] > dt.datetime.strptime(start_date, '%d.%m.%Y') - dt.timedelta(days=180):
-            driver.find_element_by_css_selector(css_element).click()
-            sleep(1)
-            html = driver.page_source
-            df = pd.read_html(html)[0]
-            df['Release Date'] = pd.to_datetime(df['Release Date'].str[:12], format='%b %d, %Y')
-        driver.close()
+        df['Price'] = df['Price'].replace(',', '')
+        df['Price'] = df['Price'].astype('float32')
     except:
         driver.close()
         parse_investing_hist(url, start_date, end_date)
-        sleep(3)
-    df = df[['Release Date', 'Actual']]
-    df.columns = ['Date', 'Actual']
-#    df.dropna(inplace=True)
-    def process_actual(df):
-        try:
-            df.Actual = df.Actual.astype('float')
-        except ValueError:
-            df.Actual = df.Actual.str[:-1]
-            process_actual(df)
-        return df
-    df = process_actual(df)
-    rng = pd.DataFrame({'Date':pd.date_range(start=df.iloc[-1]['Date'], end=end_date)})
-    df = df.merge(rng, on='Date', how='outer')
-    df = df.sort_values('Date')
-    df = df.fillna(method='ffill')
-    df = df[(df['Date'] >= dt.datetime.strptime(start_date, '%d.%m.%Y')) & (df['Date'] <= dt.datetime.strptime(end_date, '%d.%m.%Y'))]
     return df
     
 
@@ -235,6 +167,26 @@ def qt_resample(df, timeframe):
     df = df.resample(timeframe, how=conversion, base=0)
     df = df.dropna()
     return df
+
+# Get beta from two assets
+def finam_betak(market, sec, start, end):
+    market['YIELD'] = ((market['CLOSE'] - market['CLOSE'].shift()) / market['CLOSE'].shift())* 100
+    market.dropna(inplace=True)
+    market = market[['YIELD']]
+    
+    sec['YIELD'] = ((sec['CLOSE'] - sec['CLOSE'].shift()) / sec['CLOSE'].shift())* 100
+    sec.dropna(inplace=True)
+    sec = sec[['YIELD']]
+    
+    col_names = ['MARKET', 'SEC']
+    df = market.merge(sec, left_index=True, right_index=True)
+    df.columns = col_names
+    
+    cov = df.loc[:, 'MARKET'].cov(df.loc[:, 'SEC'])
+    var = np.var(df.loc[:, 'MARKET'], ddof=1)
+    beta = cov / var
+    
+    return beta
 
 
 ################# GRAPHS #################
@@ -463,5 +415,3 @@ class Aggregator:
             [x for x in self.columns if list(self.columns).index(x) % 2 == 1] + [self.columns[-2]]
             self = self[order_colunms]
         return self
-    
-    
