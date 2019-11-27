@@ -88,6 +88,11 @@ def finam_direct(ticker, start, end, timeframe):
 
 # Parse investing.com historical data by link
 def parse_investing_hist(url, start_date, end_date):
+    d, m, y = start_date.split('.')
+    start_date = f'{m}/{d}/{y}'
+    d, m, y = end_date.split('.')
+    end_date = f'{m}/{d}/{y}'
+    
     try:
         driver = webdriver.Firefox()
         driver.get(url)
@@ -451,7 +456,16 @@ def cbr_rate(start_date, end_date=dt.datetime.strftime(dt.datetime.today(), '%d.
 
 def ofz_yield(start_date, end_date=dt.datetime.strftime(dt.datetime.today(), '%d.%m.%Y')):
     url = 'https://www.investing.com/rates-bonds/russia-10-year-bond-yield-historical-data'
-    return parse_investing_hist(url, start_date, end_date)
+    df = parse_investing_hist(url, start_date, end_date)
+    df = df.sort_values('date')
+    return df
+
+
+def t10y_yield(start_date, end_date=dt.datetime.strftime(dt.datetime.today(), '%d.%m.%Y')):
+    url = 'https://www.investing.com/rates-bonds/u.s.-10-year-bond-yield-historical-data'
+    df = parse_investing_hist(url, start_date, end_date)
+    df = df.sort_values('date')
+    return df
 
 
 def cbr_remainders(start_date, end_date=dt.datetime.strftime(dt.datetime.today(), '%d.%m.%Y')):
