@@ -1,16 +1,17 @@
+#import warnings
+#warnings.filterwarnings("ignore")
+
 import pandas as pd
 import numpy as np
 from datetime import timedelta
 import datetime as dt
 import os
-import warnings
 import matplotlib.cbook
-warnings.filterwarnings("ignore",category=matplotlib.cbook.mplDeprecation)
-import mpl_finance as mpl
+#import mpl_finance as mpl
 import matplotlib.pyplot as plt
 import matplotlib.dates as dts
 import matplotlib.ticker as ticker
-import bitmex
+#import bitmex
 import plotly as py
 from plotly import graph_objs as go
 from plotly import tools
@@ -415,3 +416,19 @@ class Aggregator:
             [x for x in self.columns if list(self.columns).index(x) % 2 == 1] + [self.columns[-2]]
             self = self[order_colunms]
         return self
+    
+    
+################# MACRO #################
+def ruonia(date_start, date_end=dt.datetime.strftime(dt.datetime.today(), '%d.%m.%Y')):
+    '''
+        Ruonia data from ruonia.ru
+    '''
+    url_ruonia = f'http://ruonia.ru/archive?date_from={date_start}&date_to={date_end}'
+    df = pd.read_html(url_ruonia)[2][1:]
+    df.columns = ['Дата ставки', 'Значение, %', 'Обьем операций, млрд. руб.', 'Изменение, б.п', 'Дата публикации' ]
+    df = df.iloc[:, [0, 1]]
+    df.columns = ['date', 'ruonia']
+    df['date'] = pd.to_datetime(df['date'], format='%d.%m.%Y')
+    df['ruonia'] = df['ruonia'].astype('float16')
+    df = df.sort_values('date')
+    return df
