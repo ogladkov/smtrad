@@ -432,3 +432,17 @@ def ruonia(date_start, date_end=dt.datetime.strftime(dt.datetime.today(), '%d.%m
     df['ruonia'] = df['ruonia'].astype('float16')
     df = df.sort_values('date')
     return df
+
+
+def cbr_rate(start_date, end_date=dt.datetime.strftime(dt.datetime.today(), '%d.%m.%Y')):
+    d, m, y = start_date.split('.')
+    start_date = f'{d}%2F{m}%2F{y}'
+    d, m, y = end_date.split('.')
+    end_date = f'{d}%2F{m}%2F{y}'
+    url = f'https://www.cbr.ru/eng/hd_base/KeyRate/?UniDbQuery.Posted=True&UniDbQuery.FromDate={start_date}&UniDbQuery.ToDate={end_date}'
+    df = pd.read_html(url)[0][1:]
+    df.columns = ['date', 'cbr']
+    df['date'] = pd.to_datetime(df['date'], format='%d/%m/%Y')
+    df['cbr'] = df['cbr'].astype('float16')
+    df = df.sort_values('date')
+    return df
