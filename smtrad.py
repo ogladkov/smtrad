@@ -452,3 +452,27 @@ def cbr_rate(start_date, end_date=dt.datetime.strftime(dt.datetime.today(), '%d.
 def ofz_yield(start_date, end_date=dt.datetime.strftime(dt.datetime.today(), '%d.%m.%Y')):
     url = 'https://www.investing.com/rates-bonds/russia-10-year-bond-yield-historical-data'
     return parse_investing_hist(url, start_date, end_date)
+
+
+def cbr_remainders(start_date, end_date=dt.datetime.strftime(dt.datetime.today(), '%d.%m.%Y')):
+    driver = webdriver.Firefox()
+    url = 'https://www.cbr.ru/hd_base/ostat_base/'
+    driver.get(url)
+    driver.find_element_by_id('UniDbQuery_FromDate').click()
+    driver.find_element_by_id('UniDbQuery_FromDate').clear()
+    driver.find_element_by_id('UniDbQuery_FromDate').send_keys('10.12.2018')
+    driver.find_element_by_id('UniDbQuery_ToDate').click()
+    driver.find_element_by_id('UniDbQuery_ToDate').clear()
+    driver.find_element_by_id('UniDbQuery_ToDate').send_keys('10.12.2019')
+    driver.find_element_by_id('UniDbQuery_searchbutton').click()
+    html = driver.page_source
+    driver.close()
+
+    df = pd.read_html(html)[0].iloc[1:]
+    df.columns = ['date', 'rests_russia', 'rests_region']
+    df['date'] = pd.to_datetime(df['date'], format='%d.%m.%Y')
+    df['rests_russia'] = df['rests_russia'].str.replace(' ', '').str.replace(',', '.').astype('float16')
+    df['rests_region'] = df['rests_region'].str.replace(' ', '').str.replace(',', '.').astype('float16')
+    df = df.sort_values('date')
+
+    return df
