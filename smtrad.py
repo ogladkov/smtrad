@@ -16,6 +16,7 @@ import plotly as py
 from plotly import graph_objs as go
 from plotly import tools
 from time import sleep
+from selenium import webdriver
 
 
 emcodes_dict = {"SBER":3, "SBERP":23, "SBRF":17456, "GAZP":16842, "LKOH":8, "USD000UTSTOM":182400, "EUR_RUB__TOM":182398, "EURUSD000TOM":182399, "ALRS":81820, "ROSN":17273, "SPFB.RTS":17455, "SPFB.Si":19899, "MVID":19737, "NVTK":17370, "MOEX":152798, "HYDR":20266, "IRAO":20516, "MGNT":17086, "MTSS":15523, "GMKN":795, "YNDX":388383, "VTBR":19043, "SNGSP":13, "PLZL":17123, "CHMF":16136, "SIBN":2, "BANEP":81758, "AFLT":29, "NLMK":17046, "TATN":825, "SNGS":4, "RUAL":414279, "ENRU":16440, "RSTI":20971, "AFKS":19715, "TRMK":18441, "FXRU":182346, 'RGBI':82308, 'RASP':17713, 'MSNG':6, "MRKP":20107, "FEES":20509, "UPRO":18584, "IMOEX":420450, "MTSS":15523, "MRKU":20402, "MRKV":20286, "SI":18952, "GC":18953, "MICEX":13851, "POLY":175924, "AKRN":17564, "BSPB":20066, "DIXY":18564, "KMAZ":15544, "LSRG":19736, "MAGN":16782, "MFON":152516, "MSTT":74549, "NMTP":19629, "PIKK":18654, "RTKM":7, "RTKMP":15, "RUALR":74718, "SVAV":16080, "URKA":19623, "PHOR":81114, "GCHE":20125, "UPRO":18584}
@@ -103,10 +104,10 @@ def parse_investing_hist(url, start_date, end_date):
         df['Date'] = pd.to_datetime(df['Date'], format='%b %d, %Y')
         df['Price'] = df['Price'].replace(',', '')
         df['Price'] = df['Price'].astype('float32')
+        return df
     except:
         driver.close()
         parse_investing_hist(url, start_date, end_date)
-    return df
     
 
 # Create list from filenames from the dir
@@ -446,3 +447,8 @@ def cbr_rate(start_date, end_date=dt.datetime.strftime(dt.datetime.today(), '%d.
     df['cbr'] = df['cbr'].astype('float16')
     df = df.sort_values('date')
     return df
+
+
+def ofz_yield(start_date, end_date=dt.datetime.strftime(dt.datetime.today(), '%d.%m.%Y')):
+    url = 'https://www.investing.com/rates-bonds/russia-10-year-bond-yield-historical-data'
+    return parse_investing_hist(url, start_date, end_date)
