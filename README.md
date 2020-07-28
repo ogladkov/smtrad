@@ -9,4 +9,13 @@ This is a tool good for download financial data from Internet, merge dataframes,
 * Bitmex
 * Selenium
 
+## Fetch services
+* finam.ru
+* investing.com
+* cbr.ru
+* ruonia.ru
+
 ## How to install
+1. cd <<folder_you_wanna_install_in>>
+2. git clone https://github.com/ogladkov/smtrad.git
+3. pip install -r prerequisites.txt
