@@ -1,1 +1,6 @@
 pandas 
+Numpy
+Matplotlib
+Plotly
+Bitmex
+Selenium
