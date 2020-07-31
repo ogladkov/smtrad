@@ -25,7 +25,6 @@ path_to_files = [p for p in sys.path if 'smtrad' in p][0]
 # Read json file with tickers and codes
 with open(f'{path_to_files}\\emcodes.json', 'rb') as f:
     emcodes_dict = json.load(f)
-    
 
 
 ################# QUOTES #################
