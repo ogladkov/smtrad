@@ -17,10 +17,13 @@ from time import sleep
 from selenium import webdriver
 import json
 import  bitmex
+import sys
 
+
+path_to_files = [p for p in sys.path if 'smtrad' in p][0]
 
 # Read json file with tickers and codes
-with open('emcodes.json', 'rb') as f:
+with open(f'{path_to_files}\\emcodes.json', 'rb') as f:
     emcodes_dict = json.load(f)
 
 
