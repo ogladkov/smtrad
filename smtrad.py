@@ -95,8 +95,8 @@ def finam_direct(ticker, start, timeframe,
         df['DATETIME'] = pd.to_datetime(df['DATETIME'], format='%Y%m%d')
 
     df.set_index('DATETIME', inplace=True)
-    df.drop(['<PER>', '<DATE>', '<TICKER>', '<TIME>', '<VOL>'], axis=1, inplace=True)
-    df.columns = [f'{ticker}_OPEN', f'{ticker}_HIGH', f'{ticker}_LOW', f'{ticker}_CLOSE']
+    df.drop(['<PER>', '<DATE>', '<TICKER>', '<TIME>'], axis=1, inplace=True)
+    df.columns = [f'{ticker}_OPEN', f'{ticker}_HIGH', f'{ticker}_LOW', f'{ticker}_CLOSE', f'{ticker}_VOL']
     df.index = pd.to_datetime(df.index, format='%Y-%m-%d %H:%M:%S')
     df = df.dropna()
 
